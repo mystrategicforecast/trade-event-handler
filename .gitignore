@@ -1,0 +1,29 @@
+# Environment variables
+.env
+.env.*
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+.zsh_history
+
+# IDE
+.vscode/
+.idea/
+
+# Cloud Functions - don't ignore, we need it
+# .gcloudignore
+
+# Test files
+test-*.js
+
+# Claude files
+.claude/
+.claude*
+*.claude

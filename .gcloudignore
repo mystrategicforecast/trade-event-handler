@@ -1,0 +1,22 @@
+# This file specifies files that are intentionally untracked by gcloud.
+# See gcloud topic gcloudignore for more information.
+
+.gcloudignore
+.git/
+.gitignore
+.zsh_history
+deploy.sh
+node_modules/
+*.log
+.env
+.env.*
+*.tmp
+*.temp
+
+# Test files:
+test-*.js
+
+# Claude files:
+.claude/
+.claude*
+*.claude
