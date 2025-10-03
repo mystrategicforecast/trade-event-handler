@@ -20,3 +20,6 @@ test-*.js
 .claude/
 .claude*
 *.claude
+
+# IDE
+.vscode/

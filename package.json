@@ -10,8 +10,9 @@
     "@google-cloud/functions-framework": "^3.3.0",
     "@google-cloud/pubsub": "^4.0.0",
     "@google-cloud/tasks": "^5.0.0",
-    "node-fetch": "^3.3.2",
-    "mysql2": "^3.6.5"
+    "dotenv": "^17.2.3",
+    "mysql2": "^3.6.5",
+    "node-fetch": "^3.3.2"
   },
   "engines": {
     "node": ">=18"

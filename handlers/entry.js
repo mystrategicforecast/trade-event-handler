@@ -37,13 +37,13 @@ export async function handleEntryEvent(event, pool) {
         const trade = tradeRows[0];
 
         // ============================================================
-        // 3. UPDATE TRADE RECORD — Mark this entry as filled
+        // 3. UPDATE TRADE RECORD — Mark this entry as filled (idempotent)
         // ============================================================
         const entryFilledAtField = `entry_${entryLevel}_filled_at`;
         await pool.query(
             `UPDATE lazy_swing_trades
              SET ${entryFilledAtField} = NOW()
-             WHERE id = ?`,
+             WHERE id = ? AND ${entryFilledAtField} IS NULL`,
             [tradeId]
         );
 
@@ -62,12 +62,15 @@ export async function handleEntryEvent(event, pool) {
                  VALUES (?, 'daily', ?, ?)`,
                 [tradeId, direction === 'Long' ? 'below' : 'above', entryThreshold]
             );
+        } else {
+            console.log(`Trade ${tradeId} already has ${stops.length} stop(s) set (${stops.map(s => s.price).join(', ')}), skipping default stop creation.`);
         }
 
         // ============================================================
         // 5. SET DEFAULT PROFITS (if missing) — Profit 1 and Profit 2
         // ============================================================
-        if (!trade.profit_1 && !trade.profit_2) {
+        const profits = [trade.profit_1, trade.profit_2, trade.profit_3].filter(p => p != null);
+        if (!profits.length) {
             const profit1 = direction === 'Long' ? entryThreshold * 1.03 : entryThreshold * 0.97;
             const profit2 = direction === 'Long' ? entryThreshold * 1.06 : entryThreshold * 0.94;
             console.log(`Setting default profit targets for trade ${tradeId}: profit_1=${profit1}, profit_2=${profit2}`);
@@ -78,6 +81,8 @@ export async function handleEntryEvent(event, pool) {
                  WHERE id = ?`,
                 [profit1, profit2, tradeId]
             );
+        } else {
+            console.log(`Trade ${tradeId} already has ${profits.length} profit targets set (${profits.join(', ')}), skipping default profit creation.`);
         }
 
         // ============================================================
@@ -89,7 +94,7 @@ export async function handleEntryEvent(event, pool) {
             stopPrice: trade.stop_price,
             profit1: trade.profit_1,
             profit2: trade.profit_2
-        }, 'entry').catch(err => console.error('Promo system error:', err));
+        }, 'filled').catch(err => console.error('Promo system error:', err));
 
         await publishAlert({
             symbol,

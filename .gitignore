@@ -14,8 +14,8 @@ npm-debug.log*
 .zsh_history
 
 # IDE
-.vscode/
 .idea/
+# Keep .vscode for debugging configs
 
 # Cloud Functions - don't ignore, we need it
 # .gcloudignore
