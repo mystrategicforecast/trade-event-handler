@@ -102,9 +102,6 @@ function buildSlackMessage(event) {
         case 'stop-warning':
             return `⚠️ Stop warning: ${symbol} ${direction} at ${data.stopPrice}`;
 
-        case 'reset-detected':
-            return `🔄 Reset: ${symbol} ${direction} - ${data.resetReason}`;
-
         default:
             return `📊 ${eventType}: ${symbol} ${direction}`;
     }

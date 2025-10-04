@@ -88,13 +88,16 @@ export async function handleEntryEvent(event, pool) {
         // ============================================================
         // 6. NOTIFY EXTERNAL SYSTEMS — Promo system + Alerts
         // ============================================================
-        await sendToPromoSystem({
-            symbol,
-            direction,
-            stopPrice: trade.stop_price,
-            profit1: trade.profit_1,
-            profit2: trade.profit_2
-        }, 'filled').catch(err => console.error('Promo system error:', err));
+        // Only send to promo system for entry_1 (not entry_2 or entry_3)
+        if (entryLevel === 1) {
+            await sendToPromoSystem({
+                symbol,
+                direction,
+                stopPrice: trade.stop_price,
+                profit1: trade.profit_1,
+                profit2: trade.profit_2
+            }, 'filled').catch(err => console.error('Promo system error:', err));
+        }
 
         await publishAlert({
             symbol,

@@ -1,4 +1,4 @@
-import { handleResetEvent } from './reset.js';
+import { closeTrade } from './reset.js';
 
 export async function handleJumpEvent(event, pool) {
     const { symbol, tradeId, data, direction } = event;
@@ -23,6 +23,7 @@ export async function handleJumpEvent(event, pool) {
         }
 
         const trade = tradeRows[0];
+        const tradeName = `${symbol} (${direction})`;
 
         // ============================================================
         // 2. IDEMPOTENCY CHECK — Do these threshold values still exist?
@@ -56,7 +57,7 @@ export async function handleJumpEvent(event, pool) {
             }
         }
 
-        console.log(`Rightmost entry for trade ${tradeId}: entry_${rightmostEntry}`);
+        console.log(`Rightmost entry for trade ${tradeId} (${tradeName}): entry_${rightmostEntry}`);
 
         // ============================================================
         // 4. CHECK IF RIGHTMOST ENTRY WAS JUMPED
@@ -65,15 +66,25 @@ export async function handleJumpEvent(event, pool) {
         const rightmostJumped = rightmostValue && jumpedThresholds.some(v => Math.abs(v - rightmostValue) < PRICE_TOLERANCE);
 
         if (rightmostJumped) {
-            console.log(`⚠️  Rightmost entry (entry_${rightmostEntry}) was jumped - triggering reset`);
-            await handleResetEvent({
-                symbol,
-                tradeId,
-                direction,
-                data: {
-                    resetReason: `Rightmost entry (entry_${rightmostEntry}) jumped at ${openPrice}`
-                }
-            }, pool);
+            console.log(`⚠️  Rightmost entry (entry_${rightmostEntry}) was jumped`);
+
+            // Check if any entries were filled
+            const anyFilled = trade.entry_1_filled_at || trade.entry_2_filled_at || trade.entry_3_filled_at;
+
+            if (!anyFilled) {
+                // No entries filled → close the trade
+                await closeTrade(
+                    tradeId,
+                    symbol,
+                    'jumped',
+                    `Rightmost entry (entry_${rightmostEntry}) jumped at ${openPrice} with no entries filled`,
+                    pool
+                );
+                console.log(`Trade ${tradeId} closed - last entry jumped with no entries filled`);
+            } else {
+                // Has filled entries → keep active, continue monitoring
+                console.log(`... but ${tradeName} has filled entries, continuing to monitor for profit/stop`);
+            }
             return;
         }
 
