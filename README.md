@@ -119,8 +119,8 @@ See [EVENT_HANDLERS.md](./EVENT_HANDLERS.md) for detailed documentation of each 
 | `entry-hit` | `handleEntryEvent` | ✅ Complete | Marks entry filled, sets default stops/profits, sends alerts (promo for entry_1 only) |
 | `jump-target` | `handleJumpEvent` | ✅ Complete | Shifts remaining entries, closes trade if last entry jumped |
 | `profit-hit` | `handleProfitEvent` | ✅ Complete | Marks profit achieved, sets breakeven stop on profit_1, closes trade when all profits hit |
-| `stop-warning` | `handleStopWarningEvent` | 🚧 Placeholder | Will send member broadcast alert |
-| `stop-out` | `handleStopOutEvent` | 🚧 Placeholder | Will send alert and close trade with status 'stopped_out' |
+| `stop-warning` | `handleStopWarningEvent` | ✅ Complete | Sends member alert warning that stop is approaching (5 min before close) |
+| `stop-out` | `handleStopOutEvent` | ✅ Complete | Marks stop as triggered, sends alert, closes trade with status 'stopped_out' |
 
 ---
 
@@ -149,9 +149,10 @@ Stop loss configuration for each trade.
 
 Key fields:
 - `trade_id` - Foreign key to lazy_swing_trades
-- `stop_type` - 'daily' or 'intraday'
+- `stop_type` - 'daily' or 'weekly'
 - `operator` - 'below' (for longs) or 'above' (for shorts)
 - `price` - Stop price threshold
+- `triggered_at` - Timestamp when stop was hit (for audit trail)
 
 #### `lazy_swing_trade_events`
 Event log with execution times for monitoring.
@@ -306,14 +307,29 @@ Trigger with PubSub emulator or send test HTTP request.
 - Price jumps to 150.5, jumping entry_1
 - Result: `entry_1=151, entry_2=152, entry_3=null`
 
-### Stop Handler (`handleStopOutEvent`)
+### Stop Warning Handler (`handleStopWarningEvent`)
 
-**Trigger:** `stop-out` event from detector
+**Trigger:** `stop-warning` event from detector (5 min before close)
 
-**Planned Flow:**
-1. Send member broadcast alert
-2. Close trade with `closeTrade(tradeId, symbol, 'stopped_out', notes, pool)`
-3. Publish `trade-deleted` event
+**Flow:**
+1. **Send member alert** - Urgent warning that stop is approaching
+
+**Note:** Does not modify database, just alerts members.
+
+---
+
+### Stop Out Handler (`handleStopOutEvent`)
+
+**Trigger:** `stop-out` event from detector (5 min after close)
+
+**Flow:**
+1. **Idempotency check** - Skip if this stop-out already processed
+2. **Get trade details** - Verify trade exists
+3. **Find triggered stop** - Match stop by type (daily vs weekly)
+4. **Mark stop as triggered** - Set `triggered_at = NOW()` for audit trail
+5. **Send member alert** - Urgent notification of stop hit
+6. **Close trade** - Call `closeTrade(tradeId, symbol, 'stopped_out', notes, pool)`
+7. **Publish `trade-deleted`** event to stop price tracking
 
 ### Profit Handler (`handleProfitEvent`)
 
@@ -447,6 +463,25 @@ Actions:
   - Publish trade-deleted event to stop price tracking
 ↓
 Result: Trade closed successfully, price worker stops tracking
+```
+
+### Scenario 6: Stop Out
+
+```
+Event: stop-out for AAPL at 147.50 (stop was 148.50, daily close)
+↓
+Handler: handleStopOutEvent
+↓
+Actions:
+- Idempotency check passes
+- Find matching stop (daily stop ID 5 at 148.50)
+- Mark stop as triggered: UPDATE lazy_swing_trade_stops SET triggered_at=NOW()
+- Send member alert
+- Call closeTrade(tradeId, symbol, 'stopped_out', notes, pool)
+  - UPDATE lazy_swing_trades SET status='closed', outcome='stopped_out'
+  - Publish trade-deleted event to stop price tracking
+↓
+Result: Trade closed at loss, stop marked as triggered, price worker stops tracking
 ```
 
 ---

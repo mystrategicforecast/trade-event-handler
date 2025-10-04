@@ -103,7 +103,7 @@ function buildSlackMessage(event) {
             return `⚠️ Stop warning: ${symbol} ${direction} at ${data.stopPrice}`;
 
         default:
-            return `📊 ${eventType}: ${symbol} ${direction}`;
+            return `📊 ${eventType}: ${symbol} ${direction || 'N/A'}`;
     }
 }
 

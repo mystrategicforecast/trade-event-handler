@@ -10,7 +10,7 @@ function getPubSubClient() {
 }
 
 /**
- * Close a trade and publish trade-deleted event to stop price tracking
+ * Close a trade and publish symbol-untrack event to stop price worker tracking
  *
  * @param {number} tradeId - Trade ID
  * @param {string} symbol - Stock symbol
@@ -33,25 +33,20 @@ export async function closeTrade(tradeId, symbol, outcome, notes, pool) {
             [outcome, notes, tradeId]
         );
 
-        // Publish trade-deleted event to stop price worker tracking
+        // Publish symbol-untrack event to stop price worker tracking
         const pubsub = getPubSubClient();
-        const topic = pubsub.topic('trade-event');
+        const topic = pubsub.topic('symbol-untrack');
 
         const event = {
-            eventType: 'trade-deleted',
             symbol,
-            tradeId,
             timestamp: new Date().toISOString(),
-            data: {
-                outcome,
-                reason: notes
-            }
+            reason: outcome
         };
 
         const messageBuffer = Buffer.from(JSON.stringify(event));
         await topic.publishMessage({ data: messageBuffer });
 
-        console.log(`✅ Trade ${tradeId} (${symbol}) closed with outcome '${outcome}' and trade-deleted event published`);
+        console.log(`✅ Trade ${tradeId} (${symbol}) closed with outcome '${outcome}' and symbol-untrack event published`);
 
     } catch (error) {
         console.error(`Error closing trade ${tradeId}:`, error);
