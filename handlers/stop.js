@@ -72,14 +72,20 @@ export async function handleStopOutEvent(event, pool) {
         );
 
         let triggeredStopId = null;
-        if (stops.length > 0) {
-            // Find the stop that matches this event (by type if possible)
-            const matchingStop = stops.find(s =>
-                s.stop_type === (stopType === 'DC' ? 'daily' : 'weekly')
-            ) || stops[0]; // fallback to first stop
+        const expectedStopType = stopType === 'DC' ? 'daily' : 'weekly';
 
-            triggeredStopId = matchingStop.id;
-            console.log(`Identified stop ID ${triggeredStopId} (${matchingStop.stop_type}) was triggered`);
+        if (stops.length > 0) {
+            // Find the stop that matches this event by type (must match exactly)
+            const matchingStop = stops.find(s => s.stop_type === expectedStopType);
+
+            if (matchingStop) {
+                triggeredStopId = matchingStop.id;
+                console.log(`Identified stop ID ${triggeredStopId} (${matchingStop.stop_type}) was triggered`);
+            } else {
+                console.warn(`⚠️ No ${expectedStopType} stop found for trade ${tradeId} (has ${stops.map(s => s.stop_type).join(', ')}), cannot mark stop as triggered`);
+            }
+        } else {
+            console.warn(`⚠️ No stops found for trade ${tradeId}, cannot mark stop as triggered`);
         }
 
         // ============================================================
