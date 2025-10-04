@@ -1,5 +1,3 @@
-import { handleResetEvent } from './reset.js';
-
 export async function handleStopWarningEvent(event, pool) {
     const { symbol, tradeId, data } = event;
     console.log(`Processing stop-warning event for ${symbol}`);
